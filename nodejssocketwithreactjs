@@ -1,0 +1,75 @@
+#step-1 server nodejs
+const http = require("http");
+const express = require("express");
+const WebSocket = require("ws");
+const path = require("path");
+
+const app = express();
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
+const PORT = process.env.PORT || 3000;
+
+app.use(express.static(path.resolve(__dirname, "client")));
+
+app.get("/", function (req, res) {
+  res.sendFile(path.resolve(__dirname, "client", "index.html"));
+});
+
+wss.on("connection", function (ws) {
+  console.log(`New client: ${ws.id}`);
+
+  ws.on("message", (data) => {
+    console.log(`New message: ${data}`);
+    ws.send(`Hello ${data}`);
+  });
+});
+
+server.listen(PORT, function () {
+  console.log("Server running");
+});
+
+#step-2 client react js
+#script.js
+const sendbtn = document.querySelector("#send");
+const nameInput = document.querySelector("#name");
+const messageInput = document.querySelector("#message");
+
+const wsc = new WebSocket(`ws://${location.hostname}:${location.port}`);
+
+wsc.onopen = function () {
+  // wsc.send("Hello from client");
+};
+
+wsc.onmessage = function (message) {
+  console.log("New message: " + message.data);
+  messageInput.value += `${message.data}` + "\r\n";
+};
+
+sendbtn.addEventListener("click", () => {
+  wsc.send(nameInput.value);
+});
+
+#step-3 index.html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Heroku Test Web App and WebSocket</title>
+  </head>
+  <body>
+    <h1>Heroku Web App and WebSocket Test</h1>
+    <div>
+      <label for="name">Enter Name</label>
+      <input type="text" name="name" id="name" />
+      <input type="button" value="Send" id="send" />
+    </div>
+    <div>
+      <br />
+      <textarea name="message" id="message" cols="30" rows="10"></textarea>
+    </div>
+    <script src="/script.js"></script>
+  </body>
+</html>
+
