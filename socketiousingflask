@@ -511,3 +511,166 @@ class DHT22Module:
             except Exception as error:
                 self.dht_device.exit()
                 raise error
+
+#Step-6 reactjs code
+import React, { useEffect, useState } from "react";
+import io from "socket.io-client";
+import Plot from "react-plotly.js";
+import "./App.css";
+
+const socket = io.connect("http://localhost:5000");
+
+const MAX_GRAPH_POINTS = 12;
+
+function App() {
+  const [temperature, setTemperature] = useState(0);
+  const [humidity, setHumidity] = useState(0);
+  const [tempData, setTempData] = useState({ x: [], y: [] });
+  const [humidityData, setHumidityData] = useState({ x: [], y: [] });
+
+  useEffect(() => {
+    socket.on("updateSensorData", (msg) => {
+      const sensorReadings = JSON.parse(msg);
+      const temperature = sensorReadings.temperature.toFixed(2);
+      const humidity = sensorReadings.humidity.toFixed(2);
+
+      setTemperature(temperature);
+      setHumidity(humidity);
+
+      updateCharts("temperature", temperature);
+      updateCharts("humidity", humidity);
+    });
+
+    return () => socket.off("updateSensorData");
+  }, []);
+
+  const updateCharts = (type, value) => {
+    if (type === "temperature") {
+      setTempData((prevData) => {
+        const newX = [...prevData.x, prevData.x.length];
+        const newY = [...prevData.y, value];
+        if (newX.length > MAX_GRAPH_POINTS) {
+          newX.shift();
+          newY.shift();
+        }
+        return { x: newX, y: newY };
+      });
+    } else if (type === "humidity") {
+      setHumidityData((prevData) => {
+        const newX = [...prevData.x, prevData.x.length];
+        const newY = [...prevData.y, value];
+        if (newX.length > MAX_GRAPH_POINTS) {
+          newX.shift();
+          newY.shift();
+        }
+        return { x: newX, y: newY };
+      });
+    }
+  };
+
+  return (
+    <div className="App">
+      <h1>Temperature and Humidity Monitor</h1>
+      <div className="gauge-container">
+        <div className="gauge">
+          <h2>Temperature: {temperature} °C</h2>
+          <Plot
+            data={[
+              {
+                type: "indicator",
+                mode: "gauge+number+delta",
+                value: temperature,
+                title: { text: "Temperature" },
+                gauge: { axis: { range: [null, 50] } },
+              },
+            ]}
+            layout={{ width: 350, height: 250, margin: { t: 0, b: 0 } }}
+          />
+        </div>
+        <div className="gauge">
+          <h2>Humidity: {humidity} %</h2>
+          <Plot
+            data={[
+              {
+                type: "indicator",
+                mode: "gauge+number+delta",
+                value: humidity,
+                title: { text: "Humidity" },
+                gauge: { axis: { range: [null, 100] } },
+              },
+            ]}
+            layout={{ width: 350, height: 250, margin: { t: 0, b: 0 } }}
+          />
+        </div>
+      </div>
+      <div className="history-container">
+        <div className="history-chart">
+          <h2>Temperature History</h2>
+          <Plot
+            data={[
+              {
+                x: tempData.x,
+                y: tempData.y,
+                type: "scatter",
+                mode: "lines+markers",
+                name: "Temperature",
+              },
+            ]}
+            layout={{
+              title: "Temperature",
+              autosize: true,
+              margin: { t: 30, b: 20, l: 30, r: 20, pad: 0 },
+            }}
+          />
+        </div>
+        <div className="history-chart">
+          <h2>Humidity History</h2>
+          <Plot
+            data={[
+              {
+                x: humidityData.x,
+                y: humidityData.y,
+                type: "scatter",
+                mode: "lines+markers",
+                name: "Humidity",
+              },
+            ]}
+            layout={{
+              title: "Humidity",
+              autosize: true,
+              margin: { t: 30, b: 20, l: 30, r: 20, pad: 0 },
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default App;
+
+#step-7 css file
+.App {
+  font-family: sans-serif;
+  text-align: center;
+}
+
+.gauge-container {
+  display: flex;
+  justify-content: space-around;
+  margin: 20px;
+}
+
+.gauge {
+  width: 45%;
+}
+
+.history-container {
+  display: flex;
+  justify-content: space-around;
+  margin: 20px;
+}
+
+.history-chart {
+  width: 45%;
+}
